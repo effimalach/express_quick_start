@@ -1,56 +1,46 @@
-const fs = require('fs');
+var ObjectId = require('mongodb').ObjectId;
+const {couponsCollection}=require('../db.js');
 
 function getCoupons() {
     return require('../db/coupons.json');
 }
 
-function getAll() {
-    return getCoupons()
+async function getAll() {
+    return await  couponsCollection().find({}).toArray();
 }
 
-function getCoupon(code) {
-    const coupons = getCoupons();
-    const foundCoupon = coupons.find(existCoupon => existCoupon.code === code);
+async function getCoupon(id) {
+    const coupon=couponsCollection();
+    const foundCoupon = await coupon.findOne({"_id":ObjectId(id)});
     return foundCoupon;
 }
 
-function setcoupons(coupons) {
-    fs.writeFileSync("./db/coupons.json", JSON.stringify(coupons));
+async function addUser(newCoupon) {
+    const coupon=couponsCollection();
+    const addedCoupon = await coupon.insertOne(newCoupon);
+    return addedCoupon;
+ }
+ 
+async function update(id,data) { 
+    const coupons = couponsCollection();
+    var objForUpdate = {};
+    if (data.code) objForUpdate.code = data.code;
+    if (data.date) objForUpdate.date = data.date;
+    if (data.isRedeem!==null) objForUpdate.isRedeem = data.isRedeem;
+    objForUpdate = { $set: objForUpdate }
+    var myquery = {"_id":ObjectId(id)};
+    const updated = coupons.updateOne(myquery, objForUpdate );
+    return updated;
+
+/*     var newvalues = { $set: {code:data.code, date:data.date, isRedeem:data.isRedeem} };
+     const updated = await coupons.updateOne(myquery,newvalues);
+    return updated; */
 }
 
-function add(coupon) {
-    const foundcoupon = getCoupon(coupon.code);
-    const coupons = getCoupons();    
-    if (!foundcoupon) {
-        const newcoupon = {
-            code: coupon.code,
-            date: coupon.date,
-            isRedeem: coupon.isRedeem
-        }
-        coupons.push(newcoupon);
-        setcoupons(coupons);
-        return true;
-    }
-    return false;
-}
-
-function update(code,data) {
-    const coupons = getCoupons();
-    const foundCoupon = coupons.find(existCoupon => existCoupon.code === code);
-    if(!foundCoupon) return false;
-    Object.keys(foundCoupon).forEach(key=>{
-        if(data[key]){
-            foundCoupon[key] =data[key]
-        }
-    })
-    setcoupons(coupons);
-    return foundCoupon;
-}
-
-function deleteCoupon(code) {
-    const coupons = getCoupons();
-    const filreredCoupons = coupons.find(existCoupon => existCoupon.code !== code);
-    setcoupons(filreredCoupons);
+async function deleteCoupon(id) {
+    const coupons = couponsCollection();
+    const deletedCoupon = await coupons.deleteOne({"_id":ObjectId(id)});
+    return deletedCoupon;
 }
 
 
@@ -59,10 +49,9 @@ function deleteCoupon(code) {
 
 module.exports={
     getCoupons,
-    setcoupons,
     getCoupon,
     getAll,
-    add,
+    addUser,
     update,
     deleteCoupon
 
